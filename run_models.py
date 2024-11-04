@@ -10,7 +10,7 @@ from itertools import combinations
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import FeatureUnion
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score, f1_score
 from sklearn.utils import class_weight
 import json
 import random
@@ -43,7 +43,7 @@ def create_arg_parser():
                         help="Logs the output and arguments")
     parser.add_argument("-md", "--make_dev", default=False, action="store_true", # change so it catches the file name as well
                         help="Create a new dev file")
-    parser.add_argument("-t", "--test", default="False", action="store_true",
+    parser.add_argument("-t", "--test", default=False, action="store_true",
                         help="Run the model on the test set")
     parser.add_argument("-mt", "--make_test", default=False, action="store_true", # change so it catches the file name as well
                         help="Create a new test file")
@@ -214,6 +214,13 @@ def run_model(args, train, test):
     else:
         print(classification_report(y_test, y_pred))
 
+    ident = "dev"
+    if args.test:
+        ident = "test"
+
+    print("Accuracy on own {1} set: {0}".format(round(accuracy_score(y_test, y_pred), 3), ident))
+    print("f1 score on own {1} set: {0}".format(round(f1_score(y_test, y_pred, average="macro"), 3), ident))
+
 
 
 def prepare_data(args, train, test, mode="dev"):
@@ -226,7 +233,7 @@ def prepare_data(args, train, test, mode="dev"):
         off_train = data_preprocess(train, True)
         off_test = data_preprocess(test, True)
         off_train.to_csv('./data/off_train.tsv', sep='\t', index=False)
-        if mode == "test":
+        if args.test:
             off_test.to_csv('./data/off_test.tsv', sep='\t', index=False)
         else:
             off_test.to_csv('./data/off_dev.tsv', sep='\t', index=False)
@@ -234,7 +241,7 @@ def prepare_data(args, train, test, mode="dev"):
         # Load already created datasets
         off_train = pd.read_csv("./data/off_train.tsv", sep='\t')
 
-        if mode == "test":
+        if args.test:
             off_test = pd.read_csv("./data/off_test.tsv", sep='\t')
         else:
             off_test = pd.read_csv("./data/off_dev.tsv", sep='\t')
@@ -258,13 +265,13 @@ if __name__ == "__main__":
     # run the baseline
     if args.model == "nb":
         if args.test:
-            full_train, full_test, off_train, off_test = prepare_data(args, df_train, df_test, "test")
+            full_train, full_test, off_train, off_test = prepare_data(args, df_train, df_test)
         else:
             full_train, full_test, off_train, off_test = prepare_data(args, df_train, df_dev)
 
-        print("FULL DATA")
+        log_and_print("FULL DATA")
         run_model(args, full_train, full_test)
-        print("NO OFF DATA")
+        log_and_print("NO OFF DATA")
         run_model(args, off_train, off_test)
 
     # run lstm
@@ -272,20 +279,20 @@ if __name__ == "__main__":
         full_train, full_test, off_train, off_test = prepare_data(args, df_train, df_test, "test")
         _, full_dev, _, off_dev = prepare_data(args, df_train, df_dev)
 
-        print("FULL DATA")
+        log_and_print("FULL DATA")
         lstm.run(full_train, full_dev, full_test, args)
     
-        print("NO OFF DATA")
+        log_and_print("NO OFF DATA")
         lstm.run(off_train, off_dev, off_test, args)
 
     elif args.model == "llm":
         full_train, full_test, off_train, off_test = prepare_data(args, df_train, df_test, "test")
         _, full_dev, _, off_dev = prepare_data(args, df_train, df_dev)
 
-        print("FULL DATA")
+        log_and_print("FULL DATA")
         transformer.run(full_train, full_dev, full_test, args)
     
-        print("NO OFF DATA")
+        log_and_print("NO OFF DATA")
         transformer.run(off_train, off_dev, off_test, args)
 
 
