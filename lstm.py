@@ -150,6 +150,7 @@ def train_model(model, X_train, Y_train, X_dev, Y_dev, args):
     # It"s also possible to monitor the training loss with monitor="loss"
     callback = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
     # Finally fit the model to our data
+
     class_weights = { 0 : args.class_weights[0], 1 : args.class_weights[1]}
     model.fit(X_train, Y_train, verbose=verbose, epochs=epochs, callbacks=[callback], batch_size=batch_size,
               class_weight=class_weights, validation_data=(X_dev, Y_dev))
@@ -182,7 +183,7 @@ def run(train, dev, test, args):
     # opening data
     X_train, y_train = train["text"].to_list(), train["off"]
     X_dev, y_dev = dev["text"].to_list(), dev["off"]
-    embeddings = read_embeddings("./data/embeddings/glove.twitter.27B.25d.txt")
+    embeddings = read_embeddings("./data/embeddings/glove.twitter.27B.200d.txt")
 
     # Transform words to indices using a vectorizer
     vectorizer = TextVectorization(standardize=None, output_sequence_length=50)
@@ -217,5 +218,6 @@ def run(train, dev, test, args):
     # Do predictions on specified test set
     if args.test:
         X_test, y_test = test["text"].to_list(), test["off"].to_list()
+        y_test_bin = encoder.fit_transform(y_test)
         X_test_vect = vectorizer(np.array([[s] for s in X_test])).numpy()
-        test_set_predict(args, model, X_test_vect, y_test, "test")
+        test_set_predict(args, model, X_test_vect, y_test_bin, "test")
